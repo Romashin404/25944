@@ -24,7 +24,7 @@ int main(void)
            sp->tm_min,
            sp->tm_sec);
 
-    time_t pst;
+    time_t pst = now + 7 * 60 * 60;
 
     pst -= 8 * 60 * 60;
 
