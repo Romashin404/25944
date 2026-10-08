@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/demyanov/Downloads/OS/OS_25944_Demyanov/task1",
+      "program": "/Users/demyanov/Downloads/OS/OS_25944_Demyanov/task1/build/Debug/outDebug"
+    }
+  ]
+}

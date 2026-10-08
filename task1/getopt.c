@@ -19,8 +19,8 @@ static void usage(const char *name)
             "  -i  печать uid, euid, gid, egid\n"
             "  -s  процесс становится лидером группы\n"
             "  -p  печать pid, ppid и pgrp\n"
-            "  -u  печать ulimit\n"
-            "  -U  изменение ulimit\n"
+            "  -u  печать лимита количества процессов\n"
+            "  -U  изменение лимита количества процессов\n"
             "  -c  печать размера core-файла\n"
             "  -C  изменение размера core-файла\n"
             "  -d  печать текущей директории\n"
@@ -126,45 +126,61 @@ int main(int argc, char *argv[])
                    (long)getpid(), (long)getppid(), (long)getpgrp());
             break;
 
-        // печать значения ulimit
-        case 'u':
-            if (getrlimit(RLIMIT_FSIZE, &limit) == -1) {
-                perror("getrlimit");
-                error = 1;
-            } else if (limit.rlim_cur == RLIM_INFINITY) {
-                printf("ulimit=unlimited\n");
+        // печать лимита количества процессов
+        case 'u': {
+            long process_limit;
+
+#ifdef RLIMIT_NPROC
+            if (getrlimit(RLIMIT_NPROC, &limit) == 0) {
+                if (limit.rlim_cur == RLIM_INFINITY)
+                    printf("unlimited\n");
+                else
+                    printf("%llu\n", (unsigned long long)limit.rlim_cur);
+                break;
+            }
+#endif
+            errno = 0;
+            process_limit = sysconf(_SC_CHILD_MAX);
+            if (process_limit == -1) {
+                if (errno != 0) {
+                    perror("sysconf");
+                    error = 1;
+                } else {
+                    printf("unlimited\n");
+                }
             } else {
-                printf("ulimit=%llu\n",
-                       (unsigned long long)(limit.rlim_cur / 512));
+                printf("%ld\n", process_limit);
             }
             break;
+        }
 
-        // изменение значения ulimit
+        // изменение лимита, если RLIMIT_NPROC доступен
         case 'U':
             errno = 0;
             number = strtol(values[i], &end, 10);
             if (end == values[i] || *end != '\0' || errno != 0 || number < 0) {
-                printf("Неверное значение для -U: %s\n", values[i]);
+                fprintf(stderr, "Неверное значение для -U: %s\n", values[i]);
                 error = 1;
                 break;
             }
-            if (getrlimit(RLIMIT_FSIZE, &limit) == -1) {
+#ifdef RLIMIT_NPROC
+            if (getrlimit(RLIMIT_NPROC, &limit) == -1) {
                 perror("getrlimit");
                 error = 1;
-                break;
-            }
-            if ((uintmax_t)number > (uintmax_t)((rlim_t)-1) / 512 ||
-                (limit.rlim_max != RLIM_INFINITY &&
-                 (uintmax_t)number > (uintmax_t)limit.rlim_max / 512)) {
-                printf("Слишком большое значение для -U\n");
+            } else if ((uintmax_t)number >= (uintmax_t)RLIM_INFINITY ||
+                       (limit.rlim_max != RLIM_INFINITY &&
+                        (uintmax_t)number > (uintmax_t)limit.rlim_max)) {
+                fprintf(stderr, "Слишком большое значение для -U\n");
                 error = 1;
-                break;
+            } else {
+                limit.rlim_cur = (rlim_t)number;
+                if (setrlimit(RLIMIT_NPROC, &limit) == -1) {
+                    perror("setrlimit");
+                    error = 1;
+                }
             }
-            limit.rlim_cur = (rlim_t)number * 512;
-            if (setrlimit(RLIMIT_FSIZE, &limit) == -1) {
-                perror("setrlimit");
-                error = 1;
-            }
+#endif
+            printf("%ld\n", number);
             break;
 
         // печать размера core файла
@@ -193,7 +209,7 @@ int main(int argc, char *argv[])
                 error = 1;
                 break;
             }
-            if ((uintmax_t)number > (uintmax_t)((rlim_t)-1) ||
+            if ((uintmax_t)number >= (uintmax_t)RLIM_INFINITY ||
                 (limit.rlim_max != RLIM_INFINITY &&
                  (uintmax_t)number > (uintmax_t)limit.rlim_max)) {
                 fprintf(stderr, "Слишком большое значение для -C\n");

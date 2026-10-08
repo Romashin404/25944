@@ -24,5 +24,17 @@ int main(void)
            sp->tm_min,
            sp->tm_sec);
 
+    now -= 8 * 60 * 60;
+
+    sp = gmtime(&now);
+
+    printf("\n%02d/%02d/%04d %02d:%02d:%02d PST\n",
+           sp->tm_mon + 1,
+           sp->tm_mday,
+           sp->tm_year + 1900,
+           sp->tm_hour,
+           sp->tm_min,
+           sp->tm_sec);
+
     exit(0);
 }

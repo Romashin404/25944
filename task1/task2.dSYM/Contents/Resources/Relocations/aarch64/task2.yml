@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/demyanov/Desktop/OS/task1/task2'
+relocations:     []
+...
